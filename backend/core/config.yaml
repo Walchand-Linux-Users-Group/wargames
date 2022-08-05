@@ -1,0 +1,8 @@
+log:
+  level: debug
+backend: docker
+auth:
+  url: "http://127.0.0.1:8080"
+  pubkey: false
+configserver:
+  url: "http://127.0.0.1:8080/config"
