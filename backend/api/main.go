@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/utils/db"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
