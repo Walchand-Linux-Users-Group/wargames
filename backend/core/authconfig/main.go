@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	goHttp "net/http"
 	"os"
 	"os/signal"
@@ -41,7 +42,7 @@ func getImage(username string) string {
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := http.Post(getEnv("API_URI")+"/level", "application/json", responseBody)
+	resp, err := http.Post(getEnv("API_URI")+"/status", "application/json", responseBody)
 
 	if err != nil {
 		log.Fatalf("An Error Occured %v", err)
@@ -145,7 +146,7 @@ func verifyPassword(username string, password []byte) bool {
 	postBody, _ := json.Marshal(map[string]string{
 		"username":  username,
 		"password":  pass,
-		"api-token": getEnv("API_TOKEN"),
+		"api_token": getEnv("API_TOKEN"),
 	})
 
 	responseBody := bytes.NewBuffer(postBody)
@@ -163,10 +164,20 @@ func verifyPassword(username string, password []byte) bool {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(body)
+	type Response struct {
+		status string
+	}
 
-	// Need to check body and then return
-	return true
+	var response Response
+	json.Unmarshal(body, &response)
+
+	fmt.Println(response)
+
+	if response.status == "OK" {
+		return true
+	}
+
+	return false
 }
 
 func (a *authHandler) OnAuthorization(meta metadata.ConnectionAuthenticatedMetadata) (

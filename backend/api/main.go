@@ -1,19 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
-	"github.com/Walchand-Linux-Users-Group/wargames/backend/utils/db"
-	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
-
-func homeLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "I am alive!")
-}
 
 func initEnv() {
 	err := godotenv.Load(".env")
@@ -30,9 +24,19 @@ func getEnv(key string) string {
 func main() {
 	initEnv()
 
-	client, err := db.GetMongoClient(getEnv("MONGO_URI"))
+	_, err := GetMongoClient(getEnv("MONGO_URI"))
 
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", homeLink)
-	log.Fatal(http.ListenAndServe(":"+getEnv("PORT"), router))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = clientInstance.Ping(context.TODO(), nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Connected to MongoDB!")
+
+	initAPI()
 }
