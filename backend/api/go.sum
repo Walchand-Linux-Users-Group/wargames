@@ -1,3 +1,5 @@
+github.com/Walchand-Linux-Users-Group/wargames/backend/utils/db v0.0.0-20220806081144-0e7910c79aba h1:+U8JjmuAjdcB00FZvzqMX3Vz1uD72cFuUBuAHPy0x/I=
+github.com/Walchand-Linux-Users-Group/wargames/backend/utils/db v0.0.0-20220806081144-0e7910c79aba/go.mod h1:uVDVMi6yBlNnett9ap1fJGrMA++DiWCkWjP78RQGFAU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/golang/snappy v0.0.1 h1:Qgr9rKW7uDUkrbSmQeiDsGa8SjGyCOGtuasMWwvp2P4=

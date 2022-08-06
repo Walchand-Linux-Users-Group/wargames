@@ -3,6 +3,7 @@ module api
 go 1.18
 
 require (
+	github.com/Walchand-Linux-Users-Group/wargames/backend/utils/db v0.0.0-20220806081144-0e7910c79aba // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
