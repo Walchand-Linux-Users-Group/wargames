@@ -1,0 +1,11 @@
+log:
+  level: debug
+ssh:
+  hostkeys:
+    - ssh_host_rsa_key
+backend: docker
+auth:
+  url: "http://127.0.0.1:8080"
+  pubkey: false
+configserver:
+  url: "http://127.0.0.1:8080/config"
