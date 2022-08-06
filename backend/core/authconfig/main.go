@@ -1,32 +1,22 @@
-// ContainerSSH Authentication and Configuration Server
-//
-// This OpenAPI document describes the API endpoints that are required for implementing an authentication
-// and configuration server for ContainerSSH. (See https://github.com/containerssh/containerssh for details.)
-//
-//     Schemes: http, https
-//     Host: localhost
-//     BasePath: /
-//     Version: 0.5.0
-//
-//     Consumes:
-//     - application/json
-//
-//     Produces:
-//     - application/json
-//
-// swagger:meta
 package main
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	goHttp "net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/joho/godotenv"
+
 	"github.com/docker/docker/api/types/container"
-	"go.containerssh.io/libcontainerssh/auth"
 	authWebhook "go.containerssh.io/libcontainerssh/auth/webhook"
 	"go.containerssh.io/libcontainerssh/config"
 	configWebhook "go.containerssh.io/libcontainerssh/config/webhook"
@@ -34,26 +24,151 @@ import (
 	"go.containerssh.io/libcontainerssh/log"
 	"go.containerssh.io/libcontainerssh/metadata"
 	"go.containerssh.io/libcontainerssh/service"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 )
 
 type authHandler struct {
 }
 
-// swagger:operation POST /authz Authentication authPassword
-//
-// Password authentication
-//
-// ---
-// parameters:
-// - name: request
-//   in: body
-//   description: The authentication request
-//   required: true
-//   schema:
-//     "$ref": "#/definitions/PasswordAuthRequest"
-// responses:
-//   "200":
-//     "$ref": "#/responses/AuthResponse"
+func getImage(username string) string {
+
+	postBody, _ := json.Marshal(map[string]string{
+		"username":  username,
+		"api-token": getEnv("API_TOKEN"),
+	})
+
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err := http.Post(getEnv("API_URI")+"/level", "application/json", responseBody)
+
+	if err != nil {
+		log.Fatalf("An Error Occured %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(body)
+
+	// Process body
+
+	fileName := ""
+	nextPassword := ""
+
+	newName := username + "-" + fileName
+
+	content, err := ioutil.ReadFile(getEnv("IMAGE_FOLDER") + "/" + fileName)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Convert []byte to string
+	text := string(content)
+
+	strings.ReplaceAll(text, "<{{{NEXT_PASSWORD}}}>", nextPassword)
+
+	newFile, err := os.Create(getEnv("TMP_FOLDER") + "/" + newName)
+
+	_, err2 := newFile.WriteString(text)
+
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+
+	genImage(username, newName, getEnv("TMP_FOLDER")+"/"+newName)
+
+	return newName
+}
+
+func genImage(username string, fileName string, filePath string) {
+	ctx := context.Background()
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		log.Fatal(err, " :unable to init client")
+	}
+
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	defer tw.Close()
+
+	dockerFile := fileName
+	dockerFileReader, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err, " :unable to open Dockerfile")
+	}
+	readDockerFile, err := ioutil.ReadAll(dockerFileReader)
+	if err != nil {
+		log.Fatal(err, " :unable to read dockerfile")
+	}
+
+	tarHeader := &tar.Header{
+		Name: dockerFile,
+		Size: int64(len(readDockerFile)),
+	}
+	err = tw.WriteHeader(tarHeader)
+	if err != nil {
+		log.Fatal(err, " :unable to write tar header")
+	}
+	_, err = tw.Write(readDockerFile)
+	if err != nil {
+		log.Fatal(err, " :unable to write tar body")
+	}
+	dockerFileTarReader := bytes.NewReader(buf.Bytes())
+
+	imageBuildResponse, err := cli.ImageBuild(
+		ctx,
+		dockerFileTarReader,
+		types.ImageBuildOptions{
+			Context:    dockerFileTarReader,
+			Dockerfile: dockerFile,
+			Remove:     true})
+	if err != nil {
+		log.Fatal(err, " :unable to build docker image")
+	}
+	defer imageBuildResponse.Body.Close()
+	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
+	if err != nil {
+		log.Fatal(err, " :unable to read image build response")
+	}
+}
+
+func verifyPassword(username string, password []byte) bool {
+	pass := string(password[:])
+
+	postBody, _ := json.Marshal(map[string]string{
+		"username":  username,
+		"password":  pass,
+		"api-token": getEnv("API_TOKEN"),
+	})
+
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err := http.Post(getEnv("API_URI")+"/auth", "application/json", responseBody)
+
+	if err != nil {
+		log.Fatalf("An Error Occured %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(body)
+
+	// Need to check body and then return
+	return true
+}
+
 func (a *authHandler) OnAuthorization(meta metadata.ConnectionAuthenticatedMetadata) (
 	bool,
 	metadata.ConnectionAuthenticatedMetadata,
@@ -62,89 +177,28 @@ func (a *authHandler) OnAuthorization(meta metadata.ConnectionAuthenticatedMetad
 	return true, meta.Authenticated(meta.Username), nil
 }
 
-// swagger:operation POST /password Authentication authPassword
-//
-// Password authentication
-//
-// ---
-// parameters:
-// - name: request
-//   in: body
-//   description: The authentication request
-//   required: true
-//   schema:
-//     "$ref": "#/definitions/PasswordAuthRequest"
-// responses:
-//   "200":
-//     "$ref": "#/responses/AuthResponse"
 func (a *authHandler) OnPassword(metadata metadata.ConnectionAuthPendingMetadata, password []byte) (
 	bool,
 	metadata.ConnectionAuthenticatedMetadata,
 	error,
 ) {
-	if os.Getenv("CONTAINERSSH_ALLOW_ALL") == "1" ||
-		metadata.Username == "foo" ||
-		metadata.Username == "busybox" {
+	if verifyPassword(metadata.Username, password) {
 		return true, metadata.Authenticated(metadata.Username), nil
 	}
 	return false, metadata.AuthFailed(), nil
 }
 
-// swagger:operation POST /pubkey Authentication authPubKey
-//
-// Public key authentication
-//
-// ---
-// parameters:
-// - name: request
-//   in: body
-//   description: The authentication request
-//   required: true
-//   schema:
-//     "$ref": "#/definitions/PublicKeyAuthRequest"
-// responses:
-//   "200":
-//     "$ref": "#/responses/AuthResponse"
-func (a *authHandler) OnPubKey(meta metadata.ConnectionAuthPendingMetadata, publicKey auth.PublicKey) (
-	bool,
-	metadata.ConnectionAuthenticatedMetadata,
-	error,
-) {
-	if meta.Username == "foo" || meta.Username == "busybox" {
-		return true, meta.Authenticated(meta.Username), nil
-	}
-	return false, meta.AuthFailed(), nil
-}
-
 type configHandler struct {
 }
-
-// swagger:operation POST /config Configuration getUserConfiguration
-//
-// Fetches the configuration for a user/session
-//
-// ---
-// parameters:
-// - name: request
-//   in: body
-//   description: The configuration request
-//   schema:
-//     "$ref": "#/definitions/ConfigRequest"
-// responses:
-//   "200":
-//     "$ref": "#/responses/ConfigResponse"
 
 func (c *configHandler) OnConfig(request config.Request) (config.AppConfig, error) {
 	cfg := config.AppConfig{}
 
-	if request.Username == "foo" {
-		fmt.Println("Here I am Fucker")
-		cfg.Docker.Execution.Launch.ContainerConfig = &container.Config{}
-		cfg.Docker.Execution.Launch.ContainerConfig.Image = "busybox"
-		cfg.Docker.Execution.DisableAgent = true
-		cfg.Docker.Execution.Mode = config.DockerExecutionModeSession
-		cfg.Docker.Execution.ShellCommand = []string{"/bin/sh"}
-	}
+	cfg.Docker.Execution.Launch.ContainerConfig = &container.Config{}
+	cfg.Docker.Execution.Launch.ContainerConfig.Image = getImage(request.Username)
+	cfg.Docker.Execution.DisableAgent = true
+	cfg.Docker.Execution.Mode = config.DockerExecutionModeSession
+	cfg.Docker.Execution.ShellCommand = []string{"/bin/sh"}
 
 	return cfg, nil
 }
@@ -167,7 +221,21 @@ func (h *handler) ServeHTTP(writer goHttp.ResponseWriter, request *goHttp.Reques
 	}
 }
 
+func initEnv() {
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
+
+func getEnv(key string) string {
+	return os.Getenv(key)
+}
+
 func main() {
+	initEnv()
+
 	logger, err := log.NewLogger(
 		config.LogConfig{
 			Level:       config.LogLevelDebug,
@@ -207,7 +275,7 @@ func main() {
 	lifecycle := service.NewLifecycle(srv)
 	lifecycle.OnRunning(
 		func(s service.Service, l service.Lifecycle) {
-			println("Test Auth-Config Server is now running...")
+			println("Auth-Config Server is now running...")
 			close(running)
 		},
 	).OnStopped(
@@ -226,7 +294,7 @@ func main() {
 	select {
 	case <-running:
 		if _, ok := <-exitSignals; ok {
-			println("Stopping Test Auth-Config Server...")
+			println("Stopping Auth-Config Server...")
 			lifecycle.Stop(context.Background())
 		}
 	case <-stopped:
