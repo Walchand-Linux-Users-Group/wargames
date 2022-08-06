@@ -1,4 +1,4 @@
-package db
+package github.com/Walchand-Linux-Users-Group/wargames/backend/api/utils/db
 
 import (
 	"context"
