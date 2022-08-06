@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"db/db"
+	"github.com/Walchand-Linux-Users-Group/wargames/tree/main/backend/api/db"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -31,7 +31,7 @@ func getEnv(key string) string {
 func main() {
 	initEnv()
 
-	client, err := db.GetMongoClient()
+	client, err := db.GetMongoClient(getEnv("MONGO_URI"))
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
