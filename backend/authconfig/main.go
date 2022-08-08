@@ -12,17 +12,19 @@ import (
 	goHttp "net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
 
 	"github.com/docker/docker/api/types/container"
+	"go.containerssh.io/libcontainerssh/auth"
 	authWebhook "go.containerssh.io/libcontainerssh/auth/webhook"
 	"go.containerssh.io/libcontainerssh/config"
 	configWebhook "go.containerssh.io/libcontainerssh/config/webhook"
 	"go.containerssh.io/libcontainerssh/http"
-	"go.containerssh.io/libcontainerssh/log"
+	liblog "go.containerssh.io/libcontainerssh/log"
 	"go.containerssh.io/libcontainerssh/metadata"
 	"go.containerssh.io/libcontainerssh/service"
 
@@ -36,16 +38,16 @@ type authHandler struct {
 func getImage(username string) string {
 
 	postBody, _ := json.Marshal(map[string]string{
-		"username":  username,
-		"api-token": getEnv("API_TOKEN"),
+		"username": username,
+		"apiToken": getEnv("API_TOKEN"),
 	})
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := http.Post(getEnv("API_URI")+"/status", "application/json", responseBody)
+	resp, err := goHttp.Post(getEnv("API_URI")+"/status", "application/json", responseBody)
 
 	if err != nil {
-		log.Fatalf("An Error Occured %v", err)
+		log.Fatalln("An Error Occured %v", err)
 	}
 
 	defer resp.Body.Close()
@@ -55,14 +57,25 @@ func getImage(username string) string {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(body)
+	type Response struct {
+		Username     string `json:"username"`
+		NextPassword string `json:"nextPassword"`
+		Level        int    `json:"level"`
+		Status       string `json:"status"`
+	}
 
-	// Process body
+	var response Response
+	json.Unmarshal(body, &response)
 
-	fileName := ""
-	nextPassword := ""
+	fileName := strconv.Itoa(response.Level)
+	nextPassword := response.NextPassword
 
-	newName := username + "-" + fileName
+	newName := "-" + fileName
+
+	newName = response.Username + newName
+
+	fmt.Println("FileName:")
+	fmt.Println(string(body))
 
 	content, err := ioutil.ReadFile(getEnv("IMAGE_FOLDER") + "/" + fileName)
 
@@ -129,7 +142,9 @@ func genImage(username string, fileName string, filePath string) {
 		types.ImageBuildOptions{
 			Context:    dockerFileTarReader,
 			Dockerfile: dockerFile,
-			Remove:     true})
+			Remove:     true,
+			Tags:       []string{fileName}})
+
 	if err != nil {
 		log.Fatal(err, " :unable to build docker image")
 	}
@@ -144,14 +159,16 @@ func verifyPassword(username string, password []byte) bool {
 	pass := string(password[:])
 
 	postBody, _ := json.Marshal(map[string]string{
-		"username":  username,
-		"password":  pass,
-		"api_token": getEnv("API_TOKEN"),
+		"username": username,
+		"password": pass,
+		"apiToken": getEnv("API_TOKEN"),
 	})
+
+	fmt.Println(string(postBody))
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := http.Post(getEnv("API_URI")+"/auth", "application/json", responseBody)
+	resp, err := goHttp.Post(getEnv("API_URI")+"/auth", "application/json", responseBody)
 
 	if err != nil {
 		log.Fatalf("An Error Occured %v", err)
@@ -165,19 +182,19 @@ func verifyPassword(username string, password []byte) bool {
 	}
 
 	type Response struct {
-		status string
+		Username string `json:"username"`
+		Won      bool   `json:"won"`
+		Level    int64  `json:"level"`
+		Status   string `json:"status"`
 	}
 
 	var response Response
+	fmt.Println(string(body))
 	json.Unmarshal(body, &response)
 
 	fmt.Println(response)
 
-	if response.status == "OK" {
-		return true
-	}
-
-	return false
+	return response.Status == "success"
 }
 
 func (a *authHandler) OnAuthorization(meta metadata.ConnectionAuthenticatedMetadata) (
@@ -186,6 +203,14 @@ func (a *authHandler) OnAuthorization(meta metadata.ConnectionAuthenticatedMetad
 	error,
 ) {
 	return true, meta.Authenticated(meta.Username), nil
+}
+
+func (a *authHandler) OnPubKey(meta metadata.ConnectionAuthPendingMetadata, publicKey auth.PublicKey) (
+	bool,
+	metadata.ConnectionAuthenticatedMetadata,
+	error,
+) {
+	return false, meta.AuthFailed(), nil
 }
 
 func (a *authHandler) OnPassword(metadata metadata.ConnectionAuthPendingMetadata, password []byte) (
@@ -247,7 +272,7 @@ func getEnv(key string) string {
 func main() {
 	initEnv()
 
-	logger, err := log.NewLogger(
+	logger, err := liblog.NewLogger(
 		config.LogConfig{
 			Level:       config.LogLevelDebug,
 			Format:      config.LogFormatLJSON,
