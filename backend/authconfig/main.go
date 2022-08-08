@@ -143,7 +143,7 @@ func genImage(username string, fileName string, filePath string) {
 			Context:    dockerFileTarReader,
 			Dockerfile: dockerFile,
 			Remove:     true,
-			Tags:       []string{fileName}})
+			Tags:       []string{fileName + ":1.0"}})
 
 	if err != nil {
 		log.Fatal(err, " :unable to build docker image")
@@ -232,6 +232,7 @@ func (c *configHandler) OnConfig(request config.Request) (config.AppConfig, erro
 
 	cfg.Docker.Execution.Launch.ContainerConfig = &container.Config{}
 	cfg.Docker.Execution.Launch.ContainerConfig.Image = getImage(request.Username)
+	cfg.Docker.Execution.ImagePullPolicy = "Never"
 	cfg.Docker.Execution.DisableAgent = true
 	cfg.Docker.Execution.Mode = config.DockerExecutionModeSession
 	cfg.Docker.Execution.ShellCommand = []string{"/bin/sh"}
