@@ -1,0 +1,15 @@
+{
+  "title": "Wargames",
+  "name": "Walchand Linux Users' Group",
+  "colors": {
+    "light": {
+      "background": "#000000",
+      "foreground": "#ffffff",
+      "yellow": "#ffffff",
+      "green": "#ffffff",
+      "gray": "#ffffff",
+      "blue": "#ffffff",
+      "red": "#ffffff"
+    }
+  }
+}
