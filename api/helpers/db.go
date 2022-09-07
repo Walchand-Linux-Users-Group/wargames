@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,7 +21,7 @@ var clientInstanceError error
 var mongoOnce sync.Once
 
 //GetMongoClient - Return mongodb connection to work with
-func GetMongoClient(MONGO_URI string) (*mongo.Client, error) {
+func getMongoClient(MONGO_URI string) (*mongo.Client, error) {
 	//Perform connection creation operation only once.
 	mongoOnce.Do(func() {
 		// Set client options
@@ -37,4 +39,21 @@ func GetMongoClient(MONGO_URI string) (*mongo.Client, error) {
 		clientInstance = client
 	})
 	return clientInstance, clientInstanceError
+}
+
+func InitDatabase() {
+	_, err := getMongoClient(GetEnv("MONGO_URI"))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = clientInstance.Ping(context.TODO(), nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Connected to MongoDB!")
+
 }

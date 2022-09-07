@@ -25,7 +25,7 @@ func initAPI() {
 	router.HandleFunc("/stats", stats)
 	router.HandleFunc("/image", image)
 
-	log.Fatal(http.ListenAndServeTLS(":"+getEnv("PORT"), "full-cert.crt", "private-key.key", router))
+	log.Fatal(http.ListenAndServeTLS(":"+GetEnv("PORT"), "full-cert.crt", "private-key.key", router))
 
 }
 
@@ -287,7 +287,7 @@ func image(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.ApiToken != getEnv("API_TOKEN") {
+	if user.ApiToken != GetEnv("API_TOKEN") {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
