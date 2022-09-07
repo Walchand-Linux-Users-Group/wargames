@@ -1,41 +1,66 @@
 // // List of commands that require API calls
 
-import { getRanks } from '../api';
+import { getLeaderboard } from '../api';
 import { getStats } from '../api';
-import { submitKey } from '../api';
+import { submitFlag } from '../api';
+
+export const show = async (args: string[]): Promise<string> => {
+  if (args.length != 1) {
+    return `
+  +---------------+--------------------------+
+  |    Command    |          Usage           |
+  +===============+==========================+
+  | Submit        | submit {USERNAME}:{FLAG} |
+  | Ranking Table | show all                 |
+  | User Stats    | show {USERNAME}          |
+  +---------------+--------------------------+
+  
+`;
+  }
+
+  var data;
+
+  if(args[0]=="all"){
+    data = await getLeaderboard();
+  } else{
+    data = await getStats(args[0]);
+  }
+
+  return data;
+};
 
 export const submit = async (args: string[]): Promise<string> => {
-
-  if(args.length!=2){
-    return ``
-  }
-
-  const username = args[0], key = args[1];
-
-  const weather = await submitKey(username, key);
-  return weather;
-};
-
-export const rank = async (args: string[]): Promise<string> => {
-
+  console.log(args);
   if(args.length!=1){
     return `
-    Please check the usage of rank command:
-    
-    +---------------+-----------------+--------------+
-    |    Command    |      Usage      |   Example    |
-    +===============+=================+==============+
-    | Ranking Table | rank all        | rank all     |
-    | User Stats    | rank {USERNAME} | rank suyashc |
-    +---------------+-----------------+--------------+
-    
-    `
+  +---------------+--------------------------+
+  |    Command    |          Usage           |
+  +===============+==========================+
+  | Submit        | submit {USERNAME}:{FLAG} |
+  | Ranking Table | show all                 |
+  | User Stats    | show {USERNAME}          |
+  +---------------+--------------------------+
+  
+`;
   }
 
-  if (args[0]==="all") {
-    const rankTable = await getRanks();
-    return rankTable;
+  var splitted = args[0].split(":", 2);
+  
+  if(splitted.length!=2){
+    return `
+  +---------------+--------------------------+
+  |    Command    |          Usage           |
+  +===============+==========================+
+  | Submit        | submit {USERNAME}:{FLAG} |
+  | Ranking Table | show all                 |
+  | User Stats    | show {USERNAME}          |
+  +---------------+--------------------------+
+  
+`;
   }
-  const userStats = await getStats(args[0]);
-  return userStats;
+
+  const data = submitFlag(splitted[0],splitted[1]);
+
+  return data;
 };
+

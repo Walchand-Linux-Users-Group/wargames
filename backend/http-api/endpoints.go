@@ -25,7 +25,7 @@ func initAPI() {
 	router.HandleFunc("/stats", stats)
 	router.HandleFunc("/image", image)
 
-	log.Fatal(http.ListenAndServeTLS(":"+getEnv("PORT"), "full-cert.crt", "private-key.key", router))
+	log.Fatal(http.ListenAndServe(":"+getEnv("PORT"), router))
 
 }
 
@@ -357,7 +357,7 @@ func leaderboard(w http.ResponseWriter, r *http.Request) {
 
 	findOptions.SetLimit(10)
 
-	cursor, err := users_collection.Find(ctx, bson.M{"internal": true}, findOptions)
+	cursor, err := users_collection.Find(ctx, bson.M{"internal": false}, findOptions)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

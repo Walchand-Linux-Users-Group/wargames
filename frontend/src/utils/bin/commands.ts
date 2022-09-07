@@ -15,13 +15,13 @@ export const help = async (args: string[]): Promise<string> => {
     }
   }
   return `
-  +---------------+-------------------------+
-  |    Command    |          Usage          |
-  +===============+=========================+
-  | Submit        | submit {USERNAME}:{KEY} |
-  | Ranking Table | show all                |
-  | User Stats    | show {USERNAME}         |
-  +---------------+-------------------------+
+  +---------------+--------------------------+
+  |    Command    |          Usage           |
+  +===============+==========================+
+  | Submit        | submit {USERNAME}:{FLAG} |
+  | Ranking Table | show all                 |
+  | User Stats    | show {USERNAME}          |
+  +---------------+--------------------------+
   
 `;
 };

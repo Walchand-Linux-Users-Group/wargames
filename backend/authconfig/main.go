@@ -1,19 +1,15 @@
 package main
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	goHttp "net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -27,9 +23,6 @@ import (
 	liblog "go.containerssh.io/libcontainerssh/log"
 	"go.containerssh.io/libcontainerssh/metadata"
 	"go.containerssh.io/libcontainerssh/service"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
 
 type authHandler struct {
@@ -44,155 +37,79 @@ func getImage(username string) string {
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := goHttp.Post(getEnv("API_URI")+"/status", "application/json", responseBody)
+	resp, err := goHttp.Post(getEnv("API_URI")+"/image", "application/json", responseBody)
 
 	if err != nil {
-		log.Fatalln("An Error Occured %v", err)
+		fmt.Println("Wargames API seems down!")
+		return ""
 	}
 
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println("Error in Verifying User or API compatibility issue!")
+		return ""
 	}
 
-	type Response struct {
-		Username     string `json:"username"`
-		NextPassword string `json:"nextPassword"`
-		Level        int    `json:"level"`
-		Status       string `json:"status"`
+	type Image struct {
+		Level            int64  `json:"level"`
+		ImageName        string `json:"imageName"`
+		ImageRegistryURL string `json:"imageRegistryURL"`
+		ImageDesc        string `json:"imageDesc"`
+		Flag             string `json:"flag"`
+		Status           string `json:"status"`
 	}
 
-	var response Response
-	json.Unmarshal(body, &response)
+	var img Image
+	json.Unmarshal(body, &img)
 
-	fileName := strconv.Itoa(response.Level)
-	nextPassword := response.NextPassword
-
-	newName := "-" + fileName
-
-	newName = response.Username + newName
-
-	fmt.Println("FileName:")
-	fmt.Println(string(body))
-
-	content, err := ioutil.ReadFile(getEnv("IMAGE_FOLDER") + "/" + fileName)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Convert []byte to string
-	text := string(content)
-
-	strings.ReplaceAll(text, "<{{{NEXT_PASSWORD}}}>", nextPassword)
-
-	newFile, err := os.Create(getEnv("TMP_FOLDER") + "/" + newName)
-
-	_, err2 := newFile.WriteString(text)
-
-	if err2 != nil {
-		log.Fatal(err2)
-	}
-
-	genImage(username, newName, getEnv("TMP_FOLDER")+"/"+newName)
-
-	return newName
+	return img.ImageRegistryURL
 }
 
-func genImage(username string, fileName string, filePath string) {
-	ctx := context.Background()
-	cli, err := client.NewEnvClient()
-	if err != nil {
-		log.Fatal(err, " :unable to init client")
-	}
-
-	buf := new(bytes.Buffer)
-	tw := tar.NewWriter(buf)
-	defer tw.Close()
-
-	dockerFile := fileName
-	dockerFileReader, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err, " :unable to open Dockerfile")
-	}
-	readDockerFile, err := ioutil.ReadAll(dockerFileReader)
-	if err != nil {
-		log.Fatal(err, " :unable to read dockerfile")
-	}
-
-	tarHeader := &tar.Header{
-		Name: dockerFile,
-		Size: int64(len(readDockerFile)),
-	}
-	err = tw.WriteHeader(tarHeader)
-	if err != nil {
-		log.Fatal(err, " :unable to write tar header")
-	}
-	_, err = tw.Write(readDockerFile)
-	if err != nil {
-		log.Fatal(err, " :unable to write tar body")
-	}
-	dockerFileTarReader := bytes.NewReader(buf.Bytes())
-
-	imageBuildResponse, err := cli.ImageBuild(
-		ctx,
-		dockerFileTarReader,
-		types.ImageBuildOptions{
-			Context:    dockerFileTarReader,
-			Dockerfile: dockerFile,
-			Remove:     true,
-			Tags:       []string{fileName + ":1.0"}})
-
-	if err != nil {
-		log.Fatal(err, " :unable to build docker image")
-	}
-	defer imageBuildResponse.Body.Close()
-	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
-	if err != nil {
-		log.Fatal(err, " :unable to read image build response")
-	}
-}
-
-func verifyPassword(username string, password []byte) bool {
-	pass := string(password[:])
+func verifyUser(username string) bool {
 
 	postBody, _ := json.Marshal(map[string]string{
 		"username": username,
-		"password": pass,
-		"apiToken": getEnv("API_TOKEN"),
 	})
 
 	fmt.Println(string(postBody))
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := goHttp.Post(getEnv("API_URI")+"/auth", "application/json", responseBody)
+	resp, err := goHttp.Post(getEnv("API_URI")+"/stats", "application/json", responseBody)
 
 	if err != nil {
-		log.Fatalf("An Error Occured %v", err)
+		fmt.Println("Wargames API seems down! - Verifying User")
+		return false
 	}
 
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
+
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println("Error in Verifying User or API compatibility issue!")
+		return false
 	}
 
-	type Response struct {
-		Username string `json:"username"`
-		Won      bool   `json:"won"`
-		Level    int64  `json:"level"`
-		Status   string `json:"status"`
+	type Stat struct {
+		Timestamp int64 `json:"timestamp"`
+		Level     int64 `json:"level"`
 	}
 
-	var response Response
-	fmt.Println(string(body))
+	type User struct {
+		Username  string `json:"username"`
+		Name      string `json:"name"`
+		Level     int64  `json:"level"`
+		Org       string `json:"org"`
+		Timestamp int64  `json:"timestamp"`
+		Stats     []Stat `json:"stats"`
+		Status    string `json:"status"`
+	}
+
+	var response User
 	json.Unmarshal(body, &response)
-
-	fmt.Println(response)
 
 	return response.Status == "success"
 }
@@ -218,7 +135,8 @@ func (a *authHandler) OnPassword(metadata metadata.ConnectionAuthPendingMetadata
 	metadata.ConnectionAuthenticatedMetadata,
 	error,
 ) {
-	if verifyPassword(metadata.Username, password) {
+	if verifyUser(metadata.Username) {
+		fmt.Println("SSH successful for username ", metadata.Username)
 		return true, metadata.Authenticated(metadata.Username), nil
 	}
 	return false, metadata.AuthFailed(), nil
@@ -232,7 +150,7 @@ func (c *configHandler) OnConfig(request config.Request) (config.AppConfig, erro
 
 	cfg.Docker.Execution.Launch.ContainerConfig = &container.Config{}
 	cfg.Docker.Execution.Launch.ContainerConfig.Image = getImage(request.Username)
-	cfg.Docker.Execution.ImagePullPolicy = "Never"
+	cfg.Docker.Execution.ImagePullPolicy = "IfNotPresent"
 	cfg.Docker.Execution.DisableAgent = true
 	cfg.Docker.Execution.Mode = config.DockerExecutionModeSession
 	cfg.Docker.Execution.ShellCommand = []string{"/bin/sh"}
