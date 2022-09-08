@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/Walchand-Linux-Users-Group/wargames/api/helpers/env"
+	"github.com/Walchand-Linux-Users-Group/wargames/api/helpers"
 )
 
 func main() {
 
-	env.InitEnv()
+	helpers.InitEnv()
 
 	InitDatabase()
 

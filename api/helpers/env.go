@@ -1,4 +1,4 @@
-package github.com/Walchand-Linux-Users-Group/wargames/api/helpers
+package helpers
 
 import (
 	"log"
