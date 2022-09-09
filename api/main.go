@@ -8,7 +8,9 @@ func main() {
 
 	helpers.InitEnv()
 
-	InitDatabase()
+	mongoClient := helpers.InitDatabase()
 
-	InitAPI()
+	redisClient := helpers.InitRedis()
+
+	initAPI(mongoClient, redisClient)
 }

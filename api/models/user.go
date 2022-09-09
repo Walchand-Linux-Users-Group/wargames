@@ -15,4 +15,5 @@ type User struct {
 	Name         string             `bson:"name,omitempty"`
 	Username     string             `bson:"username,omitempty"`
 	Organisation string             `bson:"organisation,omitempty"`
+	Friends []primitive.ObjectID `bson:"friends,omitempty"`
 }
