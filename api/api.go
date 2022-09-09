@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/Walchand-Linux-Users-Group/wargames/api/routes"
-	"github.com/Walchand-Linux-Users-Group/wargames/api/helpers"
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/routes"
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/helpers"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )

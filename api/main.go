@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Walchand-Linux-Users-Group/wargames/api/helpers"
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/helpers"
 )
 
 func main() {
