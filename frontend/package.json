@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && next export -o build/",
+    "deploy": "next build && next export -o build/ && gh-pages -d build",
     "start": "next start",
     "lint": "next lint",
     "prepare": "cd .."
@@ -32,6 +33,7 @@
     "eslint-plugin-next": "^0.0.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-react": "^7.29.4",
+    "gh-pages": "^4.0.0",
     "husky": "^8.0.1",
     "postcss": "^8.4.13",
     "prettier": "^2.6.2",
