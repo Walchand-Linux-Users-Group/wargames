@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var MongoClient *mongo.Client
+
 //GetMongoClient - Return mongodb connection to work with
 func getMongoClient(MONGO_URI string) (*mongo.Client, error) {
 
@@ -42,7 +44,7 @@ func getMongoClient(MONGO_URI string) (*mongo.Client, error) {
 	return clientInstance, clientInstanceError
 }
 
-func InitDatabase() *mongo.Client {
+func InitDatabase() {
 	clientInstance, err := getMongoClient(GetEnv("MONGO_URI"))
 
 	if err != nil {
@@ -57,5 +59,5 @@ func InitDatabase() *mongo.Client {
 
 	fmt.Println("Connected to MongoDB!")
 
-	return clientInstance
+	MongoClient = clientInstance
 }

@@ -1,19 +1,18 @@
-package main
+package models
 
 import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Organisation struct {
-	ID    primitive.ObjectID   `bson:"_id,omitempty"`
 	Name  string               `bson:"name,omitempty"`
 	Users []primitive.ObjectID `bson:"users,omitempty"`
 }
 
 type User struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	Name         string             `bson:"name,omitempty"`
-	Username     string             `bson:"username,omitempty"`
-	Organisation string             `bson:"organisation,omitempty"`
-	Friends []primitive.ObjectID `bson:"friends,omitempty"`
+	Name         string               `json:"name,omitempty", bson:"name,omitempty"`
+	Username     string               `json:"username,omitempty", bson:"username,omitempty"`
+	Organisation string               `json:"organisation,omitempty", bson:"org,omitempty"`
+	FriendCount  int64                `json:"friendcount,omitempty", bson:"friendcount,omitempty"`
+	Friends      []primitive.ObjectID `json:"friends,omitempty", bson:"friends,omitempty"`
 }

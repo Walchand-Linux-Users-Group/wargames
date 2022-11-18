@@ -1,57 +1,109 @@
 package routes
 
 import (
-	"github.com/go-chi/chi/v5"
-	"net/http"
+	"context"
+	"encoding/json"
 	"fmt"
-	"errors"
+	"net/http"
+
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/models"
+	"github.com/go-chi/chi/v5"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/helpers"
 )
 
-func UserRouter(router chi.Router){
-	router.Route("/{ID[0-9]+}", func(r chi.Router) {
-		r.use(userCtx)
-		r.Get("/", getUser)
-	  })
+func UserRouter(router chi.Router) {
+	router.Get("/id/{id}", getUserById)
+	router.Post("/register", registerUser)
+
 }
 
-func userCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var user *User
-		var err error
+func getUserById(w http.ResponseWriter, r *http.Request) {
 
-		if userID := chi.URLParam(r, "ID"); userID != "" {
-			user, err = dbGetUser(userID)
-		} else {
-			render.Render(w, r, ErrNotFound)
-			return
-		}
+	userId, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
 
-		if err != nil {
-			render.Render(w, r, ErrNotFound)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), "article", article)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-var ErrNotFound = &ErrResponse{HTTPStatusCode: 404, StatusText: "Resource not found."}
-
-func ErrRender(err error) render.Renderer {
-	return &ErrResponse{
-		Err:            err,
-		HTTPStatusCode: 422,
-		StatusText:     "Error rendering response.",
-		ErrorText:      err.Error(),
-	}
-}
-
-func getUser(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value("ID").(*User)
-
-	if err := render.Render(w, r, NewArticleResponse(user)); err != nil {
-		render.Render(w, r, ErrRender(err))
+	if err != nil {
+		w.Write([]byte("Invalid id!"))
+		w.WriteHeader(400)
 		return
 	}
+
+	filter := bson.D{{"_id", userId}}
+
+	projection := bson.D{{"name", 1}, {"username", 1}, {"_id", 1}, {"friendcount", 1}}
+
+	opts := options.FindOne().SetProjection(projection)
+
+	collection := helpers.MongoClient.Database("wargames").Collection("users")
+
+	var result models.User
+
+	err = collection.FindOne(context.TODO(), filter, opts).Decode(&result)
+
+	if err != nil {
+		w.Write([]byte("User with given id not found!"))
+		w.WriteHeader(400)
+		return
+	}
+	fmt.Println(result)
+
+	userData, _ := json.Marshal(result)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(userData)
+}
+
+func registerUser(w http.ResponseWriter, r *http.Request) {
+
+	type registerUser struct {
+		Name     string `json:"name"`
+		Username string `json:"username"`
+	}
+
+	var data registerUser
+
+	err := json.NewDecoder(r.Body).Decode(&data)
+
+	if err != nil {
+		w.Write([]byte("Invalid Request!"))
+		w.WriteHeader(400)
+		return
+	}
+
+	filter := bson.D{{"username", data.Username}}
+
+	projection := bson.D{{"name", 1}, {"username", 1}, {"_id", 1}, {"friendcount", 1}}
+
+	opts := options.FindOne().SetProjection(projection)
+
+	collection := helpers.MongoClient.Database("wargames").Collection("users")
+
+	var result models.User
+
+	err = collection.FindOne(context.TODO(), filter, opts).Decode(&result)
+
+	if err == nil {
+		w.Write([]byte("User with given username already exists!"))
+		w.WriteHeader(500)
+		return
+	}
+
+	var newUser models.User
+
+	newUser.Name = data.Name
+	newUser.Username = data.Username
+
+	_, err = collection.InsertOne(context.TODO(), newUser)
+
+	if err != nil {
+		w.Write([]byte("Something went wrong!"))
+		w.WriteHeader(500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("User successfully created!"))
 }
