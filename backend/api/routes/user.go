@@ -31,9 +31,9 @@ func getUserById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := bson.D{{"_id", userId}}
+	filter := bson.D{{Key: "_id", Value: userId}}
 
-	projection := bson.D{{"name", 1}, {"username", 1}, {"_id", 1}, {"friendcount", 1}}
+	projection := bson.D{{Key: "name", Value: 1}, {Key: "username", Value: 1}, {Key: "_id", Value: 1}, {Key: "friendcount", Value: 1}}
 
 	opts := options.FindOne().SetProjection(projection)
 
@@ -73,9 +73,9 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := bson.D{{"username", data.Username}}
+	filter := bson.D{{Key: "username", Value: data.Username}}
 
-	projection := bson.D{{"name", 1}, {"username", 1}, {"_id", 1}, {"friendcount", 1}}
+	projection := bson.D{{Key: "name", Value: 1}, {Key: "username", Value: 1}, {Key: "_id", Value: 1}, {Key: "friendcount", Value: 1}}
 
 	opts := options.FindOne().SetProjection(projection)
 
@@ -95,6 +95,8 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 	newUser.Name = data.Name
 	newUser.Username = data.Username
+	newUser.FriendCount = 0
+	newUser.Friends = []primitive.ObjectID{}
 
 	_, err = collection.InsertOne(context.TODO(), newUser)
 

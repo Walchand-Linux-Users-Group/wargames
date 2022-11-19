@@ -5,7 +5,6 @@ import (
 )
 
 type Wargame struct {
-	ID          primitive.ObjectID   `bson:"_id,omitempty"`
 	Name        string               `bson:"name,omitempty"`
 	Description string               `bson:"description,omitempty"`
 	Creators    []primitive.ObjectID `bson:"creators,omitempty"`

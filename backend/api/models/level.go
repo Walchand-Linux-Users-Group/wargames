@@ -1,13 +1,9 @@
 package models
 
-import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
-
 type Level struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Name        string             `bson:"name,omitempty"`
-	URL         string             `bson:"url,omitempty"`
-	Description string             `bson:"description,omitempty"`
-	Flag        string             `bson:"flag,omitempty"`
+	Name        string `bson:"name,omitempty"`
+	URL         string `bson:"url,omitempty"`
+	Description string `bson:"description,omitempty"`
+	FlagHash    string `bson:"flaghash,omitempty"`
+	Created     int64  `bson:"created,omitempty"`
 }
