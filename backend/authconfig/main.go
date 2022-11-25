@@ -1,3 +1,6 @@
+/*
+main package is the main entry point for the authconfig backend.
+*/
 package main
 
 import (
@@ -6,14 +9,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	goHttp "net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/joho/godotenv"
-
+	"github.com/Walchand-Linux-Users-Group/wargames/backend/authconfig/helpers"
 	"github.com/docker/docker/api/types/container"
 	"go.containerssh.io/libcontainerssh/auth"
 	authWebhook "go.containerssh.io/libcontainerssh/auth/webhook"
@@ -32,12 +33,12 @@ func getImage(username string) string {
 
 	postBody, _ := json.Marshal(map[string]string{
 		"username": username,
-		"apiToken": getEnv("API_TOKEN"),
+		"apiToken": helpers.GetEnv("API_TOKEN"),
 	})
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := goHttp.Post(getEnv("API_URI")+"/image", "application/json", responseBody)
+	resp, err := goHttp.Post(helpers.GetEnv("API_URI")+"/image", "application/json", responseBody)
 
 	if err != nil {
 		fmt.Println("Wargames API seems down!")
@@ -77,7 +78,7 @@ func verifyUser(username string) bool {
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := goHttp.Post(getEnv("API_URI")+"/stats", "application/json", responseBody)
+	resp, err := goHttp.Post(helpers.GetEnv("API_URI")+"/stats", "application/json", responseBody)
 
 	if err != nil {
 		fmt.Println("Wargames API seems down! - Verifying User")
@@ -176,20 +177,11 @@ func (h *handler) ServeHTTP(writer goHttp.ResponseWriter, request *goHttp.Reques
 	}
 }
 
-func initEnv() {
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-}
-
-func getEnv(key string) string {
-	return os.Getenv(key)
-}
-
+/*
+AuthConfig handles intermediate SSH authentication.
+*/
 func main() {
-	initEnv()
+	helpers.InitEnv()
 
 	logger, err := liblog.NewLogger(
 		config.LogConfig{
@@ -198,11 +190,14 @@ func main() {
 			Destination: config.LogDestinationStdout,
 		},
 	)
+
 	if err != nil {
 		panic(err)
 	}
+
 	authHTTPHandler := authWebhook.NewHandler(&authHandler{}, logger)
 	configHTTPHandler, err := configWebhook.NewHandler(&configHandler{}, logger)
+
 	if err != nil {
 		panic(err)
 	}
@@ -221,13 +216,16 @@ func main() {
 
 		},
 	)
+
 	if err != nil {
 		panic(err)
 	}
 
 	running := make(chan struct{})
 	stopped := make(chan struct{})
+
 	lifecycle := service.NewLifecycle(srv)
+
 	lifecycle.OnRunning(
 		func(s service.Service, l service.Lifecycle) {
 			println("Auth-Config Server is now running...")
@@ -238,9 +236,11 @@ func main() {
 			close(stopped)
 		},
 	)
+
 	exitSignalList := []os.Signal{os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM}
 	exitSignals := make(chan os.Signal, 1)
 	signal.Notify(exitSignals, exitSignalList...)
+
 	go func() {
 		if err := lifecycle.Run(); err != nil {
 			panic(err)

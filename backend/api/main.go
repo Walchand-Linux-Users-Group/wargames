@@ -1,3 +1,6 @@
+/*
+main package is the main entry point for the api backend.
+*/
 package main
 
 import (
@@ -14,7 +17,7 @@ import (
 	"github.com/Walchand-Linux-Users-Group/wargames/backend/api/routes"
 )
 
-func AllowOriginFunc(r *http.Request, origin string) bool {
+func allowOriginFunc(r *http.Request, origin string) bool {
 	return true
 }
 
@@ -37,7 +40,7 @@ func initAPI() {
 	router.Use(render.SetContentType(render.ContentTypeJSON))
 
 	router.Use(cors.Handler(cors.Options{
-		AllowOriginFunc:  AllowOriginFunc,
+		AllowOriginFunc:  allowOriginFunc,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

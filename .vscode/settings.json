@@ -1,0 +1,15 @@
+{
+    "workbench.colorTheme": "GitHub Dark",
+    "editor.inlineSuggest.enabled": true,
+    "github.copilot.enable": {
+        "*": true,
+        "yaml": false,
+        "plaintext": true,
+        "markdown": false
+    },
+    "go.languageServerFlags": [
+    
+    ],
+    "go.lintTool": "revive",
+    "go.lintFlags": ["-config=${workspaceRoot}/revive-config.toml"],  
+}
